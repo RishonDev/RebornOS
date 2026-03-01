@@ -89,6 +89,7 @@ jobs:
             -e 's|Windows 11 icon theme|Windows 10 icon theme|g' \
             -e 's|commit 9f021c3e|commit bc38ddd8|g' \
             -e 's|bottom bar, centered icons (Windows 11 style)|bottom bar, left-aligned icons (Windows 10 style)|g' \
+            -e 's|Windows 11 Edition|Windows 10 Edition|g' \
             build_files/build.sh
 
           # --- README.md ---
@@ -133,6 +134,7 @@ jobs:
             -e 's|Windows 11 icon theme|Windows 7 icon theme|g' \
             -e 's|commit 9f021c3e|commit 788524c5|g' \
             -e 's|bottom bar, centered icons (Windows 11 style)|bottom bar, left-aligned start button (Windows 7 style)|g' \
+            -e 's|Windows 11 Edition|Windows 7 Edition|g' \
             build_files/build.sh
 
           # --- README.md ---

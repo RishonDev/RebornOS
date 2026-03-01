@@ -7,6 +7,8 @@ name: Publish ISO
 on:
   release:
     types: [published]
+  schedule:
+    - cron: '0 0 1 * *'  # First day of each month at midnight UTC — monthly automated ISO
   workflow_dispatch:
     inputs:
       release-tag:
@@ -38,11 +40,35 @@ jobs:
         run: |
           USER_UID=$(id -u)
           USER_GID=$(id -g)
-          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}"                                           >> ${GITHUB_ENV}
-          echo "IMAGE_NAME=${IMAGE_NAME,,}"                                                   >> ${GITHUB_ENV}
-          echo "USER_UID=${USER_UID}"                                                         >> ${GITHUB_ENV}
-          echo "USER_GID=${USER_GID}"                                                         >> ${GITHUB_ENV}
-          echo "RELEASE_TAG=${{ github.event.release.tag_name || inputs.release-tag }}"      >> ${GITHUB_ENV}
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}"   >> ${GITHUB_ENV}
+          echo "IMAGE_NAME=${IMAGE_NAME,,}"           >> ${GITHUB_ENV}
+          echo "USER_UID=${USER_UID}"                 >> ${GITHUB_ENV}
+          echo "USER_GID=${USER_GID}"                 >> ${GITHUB_ENV}
+          # Determine the release tag based on how the workflow was triggered:
+          #   schedule       → create a new monthly tag (monthly-YYYY-MM)
+          #   release event  → use the published release's tag
+          #   workflow_dispatch → use the manually supplied tag
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "RELEASE_TAG=monthly-$(date +%Y-%m)" >> ${GITHUB_ENV}
+          else
+            echo "RELEASE_TAG=${{ github.event.release.tag_name || inputs.release-tag }}" >> ${GITHUB_ENV}
+          fi
+
+      # For scheduled runs: create a dated GitHub Release so the ISO can be
+      # uploaded to it.  If the release already exists (e.g. workflow re-run)
+      # the command is a no-op thanks to `|| true`.
+      - name: Create monthly release (scheduled runs only)
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MONTH_LABEL="$(date +'%B %Y')"
+          gh release create "${RELEASE_TAG}" \
+            --title "RebornOS ${MONTH_LABEL}" \
+            --notes "Automated monthly ISO release for ${MONTH_LABEL}." \
+            --latest \
+            --repo "${{ github.repository }}" \
+            2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
 
       # Free up ~14 GB of runner disk space before the large ISO build
       - name: Maximize build space
@@ -66,6 +92,67 @@ jobs:
           chown: ${{ env.USER_UID }}:${{ env.USER_GID }}
           types: anaconda-iso
           additional-args: --use-librepo=True
+
+      # Customize the ISO boot menu so users are presented with a Windows-style
+      # choice between trying and installing RebornOS:
+      #   "Try RebornOS"              — explore the live environment
+      #   "Install RebornOS"          — run the Anaconda installer directly
+      #   "Check media & install RebornOS" — verify ISO integrity, then install
+      # xorriso reads the EFI GRUB config out of the ISO, we patch it, and
+      # xorriso writes it back — all other ISO data (MBR, boot catalogue, etc.)
+      # is preserved unchanged.
+      - name: Customize ISO boot menu
+        run: |
+          ISO_PATH="$(find "${{ steps.build.outputs.output-directory }}" -name "*.iso" | head -1)"
+          [ -z "${ISO_PATH}" ] && { echo "No ISO found; skipping GRUB customization"; exit 0; }
+
+          sudo apt-get install -y xorriso
+
+          WORK_DIR="$(mktemp -d)"
+
+          # Extract the UEFI GRUB config from the ISO.
+          # BIB-generated Anaconda ISOs place it at /EFI/BOOT/grub.cfg.
+          xorriso -osirrox on -indev "${ISO_PATH}" \
+            -extract /EFI/BOOT/grub.cfg "${WORK_DIR}/grub.cfg" -- \
+            2>/dev/null \
+            || { echo "EFI GRUB config not found in ISO; skipping customization"; exit 0; }
+
+          # Pull out the first kernel and initrd lines so we can clone them
+          # for the "Try RebornOS" entry.
+          KERNEL_LINE="$(grep -m1 '^\s*linuxefi ' "${WORK_DIR}/grub.cfg" || true)"
+          INITRD_LINE="$(grep -m1 '^\s*initrdefi ' "${WORK_DIR}/grub.cfg" || true)"
+
+          if [ -n "${KERNEL_LINE}" ] && [ -n "${INITRD_LINE}" ]; then
+            # "Try RebornOS" boots with a RAM-backed writable overlay so the
+            # user can explore the full desktop without triggering installation.
+            TRY_KERNEL="${KERNEL_LINE} rd.live.overlay.overlayfs=1"
+
+            {
+              printf "menuentry 'Try RebornOS' --class rebornos {\n"
+              printf "    %s\n" "${TRY_KERNEL}"
+              printf "    %s\n" "${INITRD_LINE}"
+              printf "}\n\n"
+              cat "${WORK_DIR}/grub.cfg"
+            } > "${WORK_DIR}/grub_new.cfg"
+            mv "${WORK_DIR}/grub_new.cfg" "${WORK_DIR}/grub.cfg"
+          fi
+
+          # Rename the default Anaconda entries to show "RebornOS" branding.
+          sed -i \
+            -e "s/menuentry 'Install [^']*/menuentry 'Install RebornOS/g" \
+            -e "s/menuentry 'Test this media \& install [^']*/menuentry 'Check media \& install RebornOS/g" \
+            "${WORK_DIR}/grub.cfg"
+
+          # Write the modified GRUB config back into the ISO.
+          # -map copies the local file into the ISO at the specified path;
+          # all boot records and signatures are preserved by xorriso.
+          xorriso -indev "${ISO_PATH}" -outdev "${ISO_PATH}.new" \
+            -map "${WORK_DIR}/grub.cfg" /EFI/BOOT/grub.cfg -- \
+            2>/dev/null \
+            && mv "${ISO_PATH}.new" "${ISO_PATH}" \
+            || echo "Warning: could not write modified GRUB config back into ISO"
+
+          rm -rf "${WORK_DIR}"
 
       # Upload the ISO to the GitHub Release so that users
       # can download the installer directly from the Releases page.
