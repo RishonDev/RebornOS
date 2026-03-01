@@ -112,13 +112,13 @@ sudo bootc switch ghcr.io/<your-github-username>/rebornos:latest
 1. Fork this repository.
 2. Enable GitHub Actions for your fork.
 3. Create a Cosign key pair and store the private key as the `SIGNING_SECRET` repository secret (see below).
-4. Push to `main` — the image will be built and published automatically to GHCR.
+4. Push to `main` — the image will be built and published automatically to GHCR, and a fresh installer ISO will be attached to the rolling `latest` GitHub release.
 
 #### Creating a Cosign key pair
 ```bash
 COSIGN_PASSWORD="" cosign generate-key-pair
-# Then base64-encode cosign.key and store that output as the SIGNING_SECRET Actions secret
-base64 -w0 cosign.key
+# Then store either the exact cosign.key contents or a base64-encoded version
+# of cosign.key in the SIGNING_SECRET Actions secret
 # Commit cosign.pub to the repo (never commit cosign.key!)
 ```
 
@@ -151,7 +151,7 @@ Builds the OCI image and publishes it to the GitHub Container Registry (GHCR) on
 `workflow_dispatch` workflow that creates or force-updates the `v11`, `v10`, and `v7` branches from any base ref. Each branch gets the correct version-specific KDE theme suite (Win11/10/7OS-kde), wallpapers, and README banner — all other content (apps, Proton, Dolphin Explorer, ISO publishing) is shared.
 
 ### .github/workflows/release-iso.yml
-Automatically builds and attaches an installer ISO to every GitHub Release. Also supports manual triggering via **Actions → Publish ISO → Run workflow**.
+Automatically builds and attaches an installer ISO after every successful `main` image build, and also supports GitHub Releases, monthly runs, and manual triggering via **Actions → Publish ISO → Run workflow**.
 
 ## License
 [Apache-2.0](./LICENSE)

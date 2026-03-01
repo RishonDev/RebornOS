@@ -1,6 +1,9 @@
 ---
 name: Publish ISO
 on:
+  workflow_run:
+    workflows: ["Build container image"]
+    types: [completed]
   release:
     types: [published]
   schedule:
@@ -25,6 +28,7 @@ concurrency:
 jobs:
   publish-iso:
     name: Build and publish ISO
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-24.04
 
     permissions:
@@ -40,24 +44,35 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}"           >> ${GITHUB_ENV}
           echo "USER_UID=${USER_UID}"                 >> ${GITHUB_ENV}
           echo "USER_GID=${USER_GID}"                 >> ${GITHUB_ENV}
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            echo "RELEASE_TAG=latest" >> ${GITHUB_ENV}
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "RELEASE_TAG=monthly-$(date +%Y-%m)" >> ${GITHUB_ENV}
           else
             echo "RELEASE_TAG=${{ github.event.release.tag_name || inputs.release-tag }}" >> ${GITHUB_ENV}
           fi
 
-      - name: Create monthly release (scheduled runs only)
-        if: github.event_name == 'schedule'
+      - name: Create rolling or monthly release
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_run'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          MONTH_LABEL="$(date +'%B %Y')"
-          gh release create "${RELEASE_TAG}" \
-            --title "RebornOS ${MONTH_LABEL}" \
-            --notes "Automated monthly ISO release for ${MONTH_LABEL}." \
-            --latest \
-            --repo "${{ github.repository }}" \
-            2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            gh release create "${RELEASE_TAG}" \
+              --title "RebornOS Latest" \
+              --notes "Automatically updated ISO built from the latest successful main-branch container image." \
+              --latest \
+              --repo "${{ github.repository }}" \
+              2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
+          else
+            MONTH_LABEL="$(date +'%B %Y')"
+            gh release create "${RELEASE_TAG}" \
+              --title "RebornOS ${MONTH_LABEL}" \
+              --notes "Automated monthly ISO release for ${MONTH_LABEL}." \
+              --latest \
+              --repo "${{ github.repository }}" \
+              2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
+          fi
 
       - name: Maximize build space
         uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e
@@ -66,6 +81,9 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 1
 
       - name: Build ISO
         id: build
