@@ -32,6 +32,20 @@ RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/)
 | **Okular** | Edge PDF viewer / Windows Reader |
 | **Ark** | File Explorer zip support / 7-Zip |
 | **Kate** | Notepad / Notepad++ |
+| **KolourPaint** | MS Paint |
+
+### Windows-like Command Line
+PowerShell (`pwsh`) is installed from Microsoft's official repository and is set as the **default login shell** for every new user. Bash remains available at `/bin/bash` as a fallback — scripts using `#!/bin/bash` are unaffected.
+
+| Feature | Detail |
+|---------|--------|
+| **Default shell** | `/usr/bin/pwsh` (PowerShell 7) |
+| **Fallback shell** | `/bin/bash` |
+| **Prompt** | `PS C:\Users\username\path>` — matches the real Windows PS prompt |
+| **Banner** | "Windows PowerShell / Copyright (C) Microsoft Corporation" on every launch |
+| **`winget`** | Alias for `rpm-ostree`; prints <span style="color:green">Reboot your system to apply the changes</span> on success |
+| **Windows commands** | `dir`, `cls`, `del`, `copy`, `move`, `ren`, `md`, `rd`, `type`, `xcopy`, `ipconfig`, `netstat`, `tasklist`, `taskkill`, `tracert`, `findstr`, `where`, `ver`, `ping` (4 packets), `path`, `systeminfo` |
+| **App shortcuts** | `notepad`, `explorer`, `calc`, `mspaint`, `wordpad` |
 
 ### Windows 11 Theming (pre-installed, no manual setup required)
 All KDE theme components come from [Win11OS-kde](https://github.com/yeyushengfan258/Win11OS-kde) and are installed system-wide at build time:
