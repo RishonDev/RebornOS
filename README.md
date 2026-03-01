@@ -22,10 +22,16 @@ RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/)
 | **LibreOffice** (Writer, Calc, Impress) | Microsoft Office (Word, Excel, PowerPoint) |
 | **Thunderbird** | Microsoft Outlook |
 | **VLC** | Windows Media Player |
+| **KCalc** | Calculator |
+| **Spectacle** | Snipping Tool |
+| **Gwenview** | Photos / image viewer |
+| **Okular** | Edge PDF viewer / Windows Reader |
+| **Ark** | File Explorer zip support / 7-Zip |
+| **Kate** | Notepad / Notepad++ |
 
-### Windows-like Theming
-- **Kvantum** theme engine is pre-installed, enabling pixel-perfect Windows-style Qt/KDE themes.
-- After first boot, visit the [KDE Store](https://store.kde.org/browse?cat=123&ord=rating) to download a Windows 11 Kvantum theme and apply it via *System Settings → Appearance*.
+### Windows 11 Theming (pre-installed, no manual setup required)
+- **[Win11OS-kde](https://github.com/yeyushengfan258/Win11OS-kde)** Kvantum theme is installed system-wide — both `Win11OS-dark` and `Win11OS-light` variants — giving Qt/KDE applications a pixel-accurate Windows 11 appearance.
+- **[Fluent icon theme](https://github.com/vinceliuice/Fluent-icon-theme)** is installed system-wide, mirroring the Windows 11 icon design language.
 - **Liberation Fonts** (metric-compatible with Arial, Times New Roman, Courier New) are pre-installed so documents from Windows render correctly.
 
 ## How to Use
