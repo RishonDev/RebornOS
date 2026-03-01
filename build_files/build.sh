@@ -274,6 +274,10 @@ EOF
 # /usr/local/share/man/man1 must also exist before install; the PowerShell RPM
 # ships a man page (pwsh.1.gz) there, and cpio will fail if the directory is
 # absent (same root cause as the /opt issue above).
+# In bazzite/Fedora immutable images /usr/local may be a symlink (e.g. to
+# /var/usrlocal) that has no target during the container build.  Replace it
+# with a real directory, just as the Containerfile does for /opt.
+[ -L /usr/local ] && rm -f /usr/local
 mkdir -p /opt/microsoft/powershell/7
 mkdir -p /usr/local/share/man/man1
 dnf5 install -y powershell
