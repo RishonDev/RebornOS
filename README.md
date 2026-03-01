@@ -117,7 +117,8 @@ sudo bootc switch ghcr.io/<your-github-username>/rebornos:latest
 #### Creating a Cosign key pair
 ```bash
 COSIGN_PASSWORD="" cosign generate-key-pair
-# Then add cosign.key contents as the SIGNING_SECRET Actions secret
+# Then add the exact cosign.key file contents, including the BEGIN/END lines,
+# as the SIGNING_SECRET Actions secret
 # Commit cosign.pub to the repo (never commit cosign.key!)
 ```
 
