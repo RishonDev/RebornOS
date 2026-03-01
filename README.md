@@ -1,6 +1,9 @@
 # RebornOS
 
-RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/) / [bootc](https://github.com/bootc-dev/bootc) image built on top of [Bazzite](https://bazzite.gg/) that is designed to look, feel, and work like Windows — while staying fully open-source and Linux-native.
+RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/) / [bootc](https://github.com/bootc-dev/bootc) image built on top of [Bazzite](https://bazzite.gg/) that is designed to look, feel, and work like **Windows 11** — while staying fully open-source and Linux-native.
+
+> **Branch:** `v11` — Windows 11 theme, icons, wallpapers, and apps.  
+> Other variants: [`v10`](../../tree/v10) (Windows 10) · [`v7`](../../tree/v7) (Windows 7)
 
 ## What's included
 
