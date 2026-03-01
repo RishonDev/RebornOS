@@ -129,42 +129,8 @@ jobs:
         with:
           cosign-release: 'v2.6.1'
 
-      - name: Materialize Cosign private key
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-
-          rm -f cosign.key cosign.key.raw cosign.key.escaped cosign.key.b64
-
-          printf '%s' "$SIGNING_SECRET" > cosign.key.raw
-          printf '%b' "$SIGNING_SECRET" > cosign.key.escaped
-
-          key_candidates=(cosign.key.raw cosign.key.escaped)
-          if printf '%s' "$SIGNING_SECRET" | base64 -d > cosign.key.b64 2>/dev/null; then
-            key_candidates+=(cosign.key.b64)
-          fi
-
-          for key_file in "${key_candidates[@]}"; do
-            if cosign public-key --key "$key_file" >/dev/null 2>&1; then
-              mv "$key_file" cosign.key
-              chmod 600 cosign.key
-              rm -f cosign.key.raw cosign.key.escaped cosign.key.b64
-              exit 0
-            fi
-          done
-
-          rm -f cosign.key.raw cosign.key.escaped cosign.key.b64
-          echo "::error::SIGNING_SECRET is not a valid cosign private key. Supported formats: raw PEM, PEM with escaped \\n, or base64-encoded PEM."
-          exit 1
-        env:
-          SIGNING_SECRET: ${{ secrets.SIGNING_SECRET }}
-
       - name: Sign container image
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         run: |
           IMAGE_FULL="${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}"
-          cosign sign -y --key cosign.key "$IMAGE_FULL@${{ steps.push.outputs.digest }}"
-          rm -f cosign.key
-        env:
-          COSIGN_EXPERIMENTAL: false
+          cosign sign -y "$IMAGE_FULL@${{ steps.push.outputs.digest }}"

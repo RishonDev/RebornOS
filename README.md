@@ -111,16 +111,7 @@ sudo bootc switch ghcr.io/<your-github-username>/rebornos:latest
 
 1. Fork this repository.
 2. Enable GitHub Actions for your fork.
-3. Create a Cosign key pair and store the private key as the `SIGNING_SECRET` repository secret (see below).
-4. Push to `main` — the image will be built and published automatically to GHCR, and a fresh installer ISO will be attached to the rolling `latest` GitHub release.
-
-#### Creating a Cosign key pair
-```bash
-COSIGN_PASSWORD="" cosign generate-key-pair
-# Then store either the exact cosign.key contents or a base64-encoded version
-# of cosign.key in the SIGNING_SECRET Actions secret
-# Commit cosign.pub to the repo (never commit cosign.key!)
-```
+3. Push to `main` — the image will be built and published automatically to GHCR, signed with GitHub OIDC keyless signing, and a fresh installer ISO will be attached to the rolling `latest` GitHub release.
 
 ## Base Image
 
