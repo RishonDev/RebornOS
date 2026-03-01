@@ -32,20 +32,37 @@ RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/)
 | **Okular** | Edge PDF viewer / Windows Reader |
 | **Ark** | File Explorer zip support / 7-Zip |
 | **Kate** | Notepad / Notepad++ |
+| **KolourPaint** | MS Paint |
+
+### Windows-like Command Line
+PowerShell (`pwsh`) is installed from Microsoft's official repository and is set as the **default login shell** for every new user. Bash remains available at `/bin/bash` as a fallback — scripts using `#!/bin/bash` are unaffected.
+
+| Feature | Detail |
+|---------|--------|
+| **Default shell** | `/usr/bin/pwsh` (PowerShell 7) |
+| **Fallback shell** | `/bin/bash` |
+| **Prompt** | `PS C:\Users\username\path>` — matches the real Windows PS prompt |
+| **Banner** | "Windows PowerShell / Copyright (C) Microsoft Corporation" on every launch |
+| **`winget`** | Alias for `rpm-ostree`; prints <span style="color:green">Reboot your system to apply the changes</span> on success |
+| **Windows commands** | `dir`, `cls`, `del`, `copy`, `move`, `ren`, `md`, `rd`, `type`, `xcopy`, `ipconfig`, `netstat`, `tasklist`, `taskkill`, `tracert`, `findstr`, `where`, `ver`, `ping` (4 packets), `path`, `systeminfo` |
+| **App shortcuts** | `notepad`, `explorer`, `calc`, `mspaint`, `wordpad` |
 
 ### Windows 11 Theming (pre-installed, no manual setup required)
 All KDE theme components come from [Win11OS-kde](https://github.com/yeyushengfan258/Win11OS-kde) and are installed system-wide at build time:
 
 | Component | What it themes |
 |-----------|---------------|
-| **Kvantum theme** (`Win11OS-dark` / `Win11OS-light`) | Qt/KDE application chrome |
+| **Kvantum theme** (`Win11OS-dark` / `Win11OS-light`) | Qt/KDE application chrome — Dolphin, System Settings, KCalc, Kate, etc. |
 | **Aurorae window decoration** | Title bar with Windows 11 close / min / max buttons |
 | **Color scheme** | System-wide accent colour and palette |
 | **Plasma desktop theme** | Panel, task-switcher, and widget styling |
 | **Look-and-feel package** | Panel layout — bottom bar with centered icons (Windows 11 style) |
 | **Wallpaper** | Official-style Windows 11 wallpapers |
-| **[Fluent icon theme](https://github.com/vinceliuice/Fluent-icon-theme)** | Windows 11 icon design language |
-| **Liberation Fonts** | Metric-compatible with Arial, Times New Roman, Courier New |
+| **SDDM login theme** | Login / lock screen styled as Windows 11 (`/etc/sddm.conf.d/theme.conf`) |
+| **[Fluent icon theme](https://github.com/vinceliuice/Fluent-icon-theme)** | Windows 11 icon design language — applied to all Qt and GTK apps |
+| **Liberation Fonts** | Metric-compatible with Arial, Times New Roman, Courier New — set as system font |
+
+All of the above are **auto-applied on first login** via pre-seeded `/etc/skel/` config files (`kdeglobals`, `plasmarc`, `kwinrc`, `Kvantum/kvantum.kvconfig`, `gtk-3.0/settings.ini`, `gtk-4.0/settings.ini`) and a first-login `plasma-apply-lookandfeel` script.  Firefox is kept as-is; only its file picker and native GTK dialogs inherit the icon set and font.
 
 ### Windows Explorer-like File Manager
 Dolphin is pre-configured via `/etc/skel/` to match Windows Explorer out of the box:
@@ -65,7 +82,7 @@ RebornOS ships three branches, each themed for a specific Windows release:
 | [`v10`](../../tree/v10) | Windows 10 | Win10OS-kde — left-aligned taskbar, Fluent icons, Hero wallpaper |
 | [`v7`](../../tree/v7)   | Windows 7  | Win7OS-kde  — classic Aero start button, Aero wallpapers |
 
-All branches share the same apps, Proton support, and Dolphin Explorer layout. Only the KDE theme suite (Kvantum, Aurorae, color scheme, Plasma theme, wallpaper, SDDM) differs.
+All branches share the same apps, Proton support, and Dolphin Explorer layout. The KDE theme suite (Kvantum, Aurorae, color scheme, Plasma theme, wallpaper, SDDM) and the skel config files (`plasmarc`, `kwinrc`, `kdeglobals`, `kvantum.kvconfig`) are swapped per branch automatically by the `setup-version-branches` workflow.
 
 ### Refreshing the branches
 After merging new features to `main`, go to **Actions → Set up version branches → Run workflow** to push updated v7/v10/v11 branches automatically.
