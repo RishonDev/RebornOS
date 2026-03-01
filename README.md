@@ -55,11 +55,26 @@ Dolphin is pre-configured via `/etc/skel/` to match Windows Explorer out of the 
 - **Status bar** at the bottom — shows item count and total size
 - **Menu bar hidden** — clean, modern Explorer look
 
+## Version Branches
+
+RebornOS ships three branches, each themed for a specific Windows release:
+
+| Branch | Windows version | Theme suite |
+|--------|----------------|-------------|
+| [`v11`](../../tree/v11) | Windows 11 | Win11OS-kde — centered taskbar, Fluent icons, Bloom wallpaper |
+| [`v10`](../../tree/v10) | Windows 10 | Win10OS-kde — left-aligned taskbar, Fluent icons, Hero wallpaper |
+| [`v7`](../../tree/v7)   | Windows 7  | Win7OS-kde  — classic Aero start button, Aero wallpapers |
+
+All branches share the same apps, Proton support, and Dolphin Explorer layout. Only the KDE theme suite (Kvantum, Aurorae, color scheme, Plasma theme, wallpaper, SDDM) differs.
+
+### Refreshing the branches
+After merging new features to `main`, go to **Actions → Set up version branches → Run workflow** to push updated v7/v10/v11 branches automatically.
+
 ## Downloading an ISO
 
 Every GitHub Release includes a pre-built installer ISO so you can install RebornOS from a USB drive, just like any other Linux distro.
 
-1. Go to the [Releases page](../../releases).
+1. Go to the **Releases** page of this repository on GitHub.
 2. Download the `.iso` file attached to the latest release.
 3. Flash it to a USB drive (e.g. with [Balena Etcher](https://etcher.balena.io/) or `dd`).
 4. Boot from the USB and follow the Anaconda installer.
@@ -116,6 +131,9 @@ Builds the OCI image and publishes it to the GitHub Container Registry (GHCR) on
 
 ### .github/workflows/build-disk.yml
 Manually-triggered workflow that builds a `qcow2` VM image and an `anaconda-iso` using `bootc-image-builder`. Uploads to job artifacts or S3.
+
+### .github/workflows/setup-version-branches.yml
+`workflow_dispatch` workflow that creates or force-updates the `v11`, `v10`, and `v7` branches from any base ref. Each branch gets the correct version-specific KDE theme suite (Win11/10/7OS-kde), wallpapers, and README banner — all other content (apps, Proton, Dolphin Explorer, ISO publishing) is shared.
 
 ### .github/workflows/release-iso.yml
 Automatically builds and attaches an installer ISO to every GitHub Release. Also supports manual triggering via **Actions → Publish ISO → Run workflow**.

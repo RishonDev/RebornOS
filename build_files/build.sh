@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# set -ouex pipefail ensures the build fails immediately on any error,
+# undefined variable, or failed pipeline stage — no silent partial installs.
 set -ouex pipefail
 
 ### Install packages
