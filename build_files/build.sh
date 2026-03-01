@@ -243,6 +243,11 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
+# Pre-create the PowerShell install directory before the RPM unpacks its files.
+# Without this, cpio fails when /opt is still a symlink to /var/opt in some
+# base images (the Containerfile already converts /opt to a real directory, but
+# this explicit mkdir is an extra safety net and ensures proper ownership).
+mkdir -p /opt/microsoft/powershell/7
 dnf5 install -y powershell
 
 ### Set PowerShell as the default login shell for new users
