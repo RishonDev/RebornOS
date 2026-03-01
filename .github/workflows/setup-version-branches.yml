@@ -1,0 +1,162 @@
+---
+name: Set up version branches
+
+# Creates (or force-updates) three branches — v7, v10, v11 — each containing
+# a fully self-contained version of RebornOS themed for that Windows release.
+# Run this after merging changes to the default branch so that all three
+# branches stay in sync with the latest shared improvements.
+on:
+  workflow_dispatch:
+    inputs:
+      base-ref:
+        description: "Branch or tag to base the version branches on"
+        default: "main"
+        required: false
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  create-branches:
+    name: Create v7 / v10 / v11 branches
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write   # push the new branches
+
+    steps:
+      - name: Checkout base ref
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ inputs.base-ref || github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Record the exact commit SHA of the checked-out base so that v10 and v7
+      # branches always start from exactly the same point as v11, even when the
+      # base-ref is a branch name whose tip could move during the job.
+      - name: Record base commit SHA
+        id: base
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # ── v11 ─────────────────────────────────────────────────────────────────
+      # Windows 11: the base branch already contains Win11OS-kde — just stamp
+      # the version label in the README and push to the v11 branch.
+      - name: Create branch v11 (Windows 11)
+        run: |
+          git checkout -B v11
+
+          # Stamp the Windows version in the README intro
+          sed -i \
+            's|designed to look, feel, and work like \*\*Windows.*\*\*|designed to look, feel, and work like **Windows 11**|' \
+            README.md
+
+          # Add / update the branch banner
+          sed -i \
+            '/^> \*\*Branch:\*\*/d' \
+            README.md
+          sed -i \
+            '/^> Other variants:/d' \
+            README.md
+          sed -i \
+            "0,/^RebornOS is a custom/s/^RebornOS is a custom/> **Branch:** \`v11\` — Windows 11 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v10\`](..\/..\/tree\/v10) (Windows 10) · [\`v7\`](..\/..\/tree\/v7) (Windows 7)\n\nRebornOS is a custom/" \
+            README.md
+
+          git add README.md
+          git diff --cached --quiet || git commit -m "v11: Windows 11 theme variant"
+          git push --force origin v11
+          echo "✓ v11 pushed"
+
+      # ── v10 ─────────────────────────────────────────────────────────────────
+      # Windows 10: swap Win11OS-kde → Win10OS-kde (pinned to bc38ddd8).
+      - name: Create branch v10 (Windows 10)
+        run: |
+          git checkout -B v10 ${{ steps.base.outputs.sha }}
+
+          # --- build_files/build.sh ---
+          sed -i \
+            -e 's|yeyushengfan258/Win11OS-kde/archive/9f021c3e71da7baf59a0614ab858d53b1e455fd5|yeyushengfan258/Win10OS-kde/archive/bc38ddd8d60d49fad88ce255a86be6b1b2024f0e|g' \
+            -e 's|Win11OS-kde-9f021c3e71da7baf59a0614ab858d53b1e455fd5|Win10OS-kde-bc38ddd8d60d49fad88ce255a86be6b1b2024f0e|g' \
+            -e 's|Win11OS-kde|Win10OS-kde|g' \
+            -e 's|Win11OS|Win10OS|g' \
+            -e 's|Windows 11 full KDE|Windows 10 full KDE|g' \
+            -e 's|Windows 11 icon theme|Windows 10 icon theme|g' \
+            -e 's|commit 9f021c3e|commit bc38ddd8|g' \
+            -e 's|bottom bar, centered icons (Windows 11 style)|bottom bar, left-aligned icons (Windows 10 style)|g' \
+            build_files/build.sh
+
+          # --- README.md ---
+          sed -i \
+            's|designed to look, feel, and work like \*\*Windows.*\*\*|designed to look, feel, and work like **Windows 10**|' \
+            README.md
+          sed -i \
+            '/^> \*\*Branch:\*\*/d' \
+            README.md
+          sed -i \
+            '/^> Other variants:/d' \
+            README.md
+          sed -i \
+            "0,/^RebornOS is a custom/s/^RebornOS is a custom/> **Branch:** \`v10\` — Windows 10 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v11\`](..\/..\/tree\/v11) (Windows 11) · [\`v7\`](..\/..\/tree\/v7) (Windows 7)\n\nRebornOS is a custom/" \
+            README.md
+
+          # Update theming section headings in README
+          sed -i \
+            -e 's|Win11OS-kde|Win10OS-kde|g' \
+            -e 's|Win11OS|Win10OS|g' \
+            -e 's|Windows 11 Theming|Windows 10 Theming|g' \
+            README.md
+
+          git add build_files/build.sh README.md
+          git commit -m "v10: Windows 10 theme variant (Win10OS-kde)"
+          git push --force origin v10
+          echo "✓ v10 pushed"
+
+      # ── v7 ──────────────────────────────────────────────────────────────────
+      # Windows 7: swap Win11OS-kde → Win7OS-kde (pinned to 788524c5).
+      - name: Create branch v7 (Windows 7)
+        run: |
+          git checkout -B v7 ${{ steps.base.outputs.sha }}
+
+          # --- build_files/build.sh ---
+          sed -i \
+            -e 's|yeyushengfan258/Win11OS-kde/archive/9f021c3e71da7baf59a0614ab858d53b1e455fd5|yeyushengfan258/Win7OS-kde/archive/788524c50f0d7ae1758e45f59057f674685ad603|g' \
+            -e 's|Win11OS-kde-9f021c3e71da7baf59a0614ab858d53b1e455fd5|Win7OS-kde-788524c50f0d7ae1758e45f59057f674685ad603|g' \
+            -e 's|Win11OS-kde|Win7OS-kde|g' \
+            -e 's|Win11OS|Win7OS|g' \
+            -e 's|Windows 11 full KDE|Windows 7 full KDE|g' \
+            -e 's|Windows 11 icon theme|Windows 7 icon theme|g' \
+            -e 's|commit 9f021c3e|commit 788524c5|g' \
+            -e 's|bottom bar, centered icons (Windows 11 style)|bottom bar, left-aligned start button (Windows 7 style)|g' \
+            build_files/build.sh
+
+          # --- README.md ---
+          sed -i \
+            's|designed to look, feel, and work like \*\*Windows.*\*\*|designed to look, feel, and work like **Windows 7**|' \
+            README.md
+          sed -i \
+            '/^> \*\*Branch:\*\*/d' \
+            README.md
+          sed -i \
+            '/^> Other variants:/d' \
+            README.md
+          sed -i \
+            "0,/^RebornOS is a custom/s/^RebornOS is a custom/> **Branch:** \`v7\` — Windows 7 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v11\`](..\/..\/tree\/v11) (Windows 11) · [\`v10\`](..\/..\/tree\/v10) (Windows 10)\n\nRebornOS is a custom/" \
+            README.md
+
+          # Update theming section headings in README
+          sed -i \
+            -e 's|Win11OS-kde|Win7OS-kde|g' \
+            -e 's|Win11OS|Win7OS|g' \
+            -e 's|Windows 11 Theming|Windows 7 Theming|g' \
+            README.md
+
+          git add build_files/build.sh README.md
+          git commit -m "v7: Windows 7 theme variant (Win7OS-kde)"
+          git push --force origin v7
+          echo "✓ v7 pushed"

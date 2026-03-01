@@ -1,6 +1,9 @@
 # RebornOS
 
-RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/) / [bootc](https://github.com/bootc-dev/bootc) image built on top of [Bazzite](https://bazzite.gg/) that is designed to look, feel, and work like Windows — while staying fully open-source and Linux-native.
+RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/) / [bootc](https://github.com/bootc-dev/bootc) image built on top of [Bazzite](https://bazzite.gg/) that is designed to look, feel, and work like **Windows 11** — while staying fully open-source and Linux-native.
+
+> **Branch:** `v11` — Windows 11 theme, icons, wallpapers, and apps.  
+> Other variants: [`v10`](../../tree/v10) (Windows 10) · [`v7`](../../tree/v7) (Windows 7)
 
 ## What's included
 
@@ -10,6 +13,7 @@ RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/)
 | **Wine** | Run Windows `.exe` applications directly on Linux |
 | **Winetricks** | Install Windows runtimes (DirectX, .NET, Visual C++, etc.) |
 | **cabextract** | Extract Windows cabinet/installer archives |
+| **Protontricks** | Apply per-game Winetricks overrides inside Proton prefixes |
 
 > **Tip:** For a graphical Wine manager, install [Bottles](https://usebottles.com/) from the Flatpak store after first boot:
 > ```bash
@@ -22,11 +26,61 @@ RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/)
 | **LibreOffice** (Writer, Calc, Impress) | Microsoft Office (Word, Excel, PowerPoint) |
 | **Thunderbird** | Microsoft Outlook |
 | **VLC** | Windows Media Player |
+| **KCalc** | Calculator |
+| **Spectacle** | Snipping Tool |
+| **Gwenview** | Photos / image viewer |
+| **Okular** | Edge PDF viewer / Windows Reader |
+| **Ark** | File Explorer zip support / 7-Zip |
+| **Kate** | Notepad / Notepad++ |
 
-### Windows-like Theming
-- **Kvantum** theme engine is pre-installed, enabling pixel-perfect Windows-style Qt/KDE themes.
-- After first boot, visit the [KDE Store](https://store.kde.org/browse?cat=123&ord=rating) to download a Windows 11 Kvantum theme and apply it via *System Settings → Appearance*.
-- **Liberation Fonts** (metric-compatible with Arial, Times New Roman, Courier New) are pre-installed so documents from Windows render correctly.
+### Windows 11 Theming (pre-installed, no manual setup required)
+All KDE theme components come from [Win11OS-kde](https://github.com/yeyushengfan258/Win11OS-kde) and are installed system-wide at build time:
+
+| Component | What it themes |
+|-----------|---------------|
+| **Kvantum theme** (`Win11OS-dark` / `Win11OS-light`) | Qt/KDE application chrome |
+| **Aurorae window decoration** | Title bar with Windows 11 close / min / max buttons |
+| **Color scheme** | System-wide accent colour and palette |
+| **Plasma desktop theme** | Panel, task-switcher, and widget styling |
+| **Look-and-feel package** | Panel layout — bottom bar with centered icons (Windows 11 style) |
+| **Wallpaper** | Official-style Windows 11 wallpapers |
+| **[Fluent icon theme](https://github.com/vinceliuice/Fluent-icon-theme)** | Windows 11 icon design language |
+| **Liberation Fonts** | Metric-compatible with Arial, Times New Roman, Courier New |
+
+### Windows Explorer-like File Manager
+Dolphin is pre-configured via `/etc/skel/` to match Windows Explorer out of the box:
+- **Details view** (Name, Size, Date Modified, Type) — mirrors Explorer's default layout
+- **Breadcrumb navigation bar** — matches Explorer's address bar
+- **Places panel** on the left — matches Explorer's navigation pane
+- **Status bar** at the bottom — shows item count and total size
+- **Menu bar hidden** — clean, modern Explorer look
+
+## Version Branches
+
+RebornOS ships three branches, each themed for a specific Windows release:
+
+| Branch | Windows version | Theme suite |
+|--------|----------------|-------------|
+| [`v11`](../../tree/v11) | Windows 11 | Win11OS-kde — centered taskbar, Fluent icons, Bloom wallpaper |
+| [`v10`](../../tree/v10) | Windows 10 | Win10OS-kde — left-aligned taskbar, Fluent icons, Hero wallpaper |
+| [`v7`](../../tree/v7)   | Windows 7  | Win7OS-kde  — classic Aero start button, Aero wallpapers |
+
+All branches share the same apps, Proton support, and Dolphin Explorer layout. Only the KDE theme suite (Kvantum, Aurorae, color scheme, Plasma theme, wallpaper, SDDM) differs.
+
+### Refreshing the branches
+After merging new features to `main`, go to **Actions → Set up version branches → Run workflow** to push updated v7/v10/v11 branches automatically.
+
+## Downloading an ISO
+
+Every GitHub Release includes a pre-built installer ISO so you can install RebornOS from a USB drive, just like any other Linux distro.
+
+1. Go to the **Releases** page of this repository on GitHub.
+2. Download the `.iso` file attached to the latest release.
+3. Flash it to a USB drive (e.g. with [Balena Etcher](https://etcher.balena.io/) or `dd`).
+4. Boot from the USB and follow the Anaconda installer.
+
+> **Want to build your own ISO?**  
+> Go to **Actions → Publish ISO → Run workflow**, enter the release tag, and the workflow will build and attach the ISO to that release.
 
 ## How to Use
 
@@ -74,6 +128,15 @@ Installs all packages listed above during the image build.
 
 ### .github/workflows/build.yml
 Builds the OCI image and publishes it to the GitHub Container Registry (GHCR) on every push to `main`.
+
+### .github/workflows/build-disk.yml
+Manually-triggered workflow that builds a `qcow2` VM image and an `anaconda-iso` using `bootc-image-builder`. Uploads to job artifacts or S3.
+
+### .github/workflows/setup-version-branches.yml
+`workflow_dispatch` workflow that creates or force-updates the `v11`, `v10`, and `v7` branches from any base ref. Each branch gets the correct version-specific KDE theme suite (Win11/10/7OS-kde), wallpapers, and README banner — all other content (apps, Proton, Dolphin Explorer, ISO publishing) is shared.
+
+### .github/workflows/release-iso.yml
+Automatically builds and attaches an installer ISO to every GitHub Release. Also supports manual triggering via **Actions → Publish ISO → Run workflow**.
 
 ## License
 [Apache-2.0](./LICENSE)
