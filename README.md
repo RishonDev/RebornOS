@@ -147,9 +147,6 @@ Installs all packages listed above during the image build.
 ### .github/workflows/build.yml
 Builds the OCI image and publishes it to the GitHub Container Registry (GHCR) on every push to `main`.
 
-### .github/workflows/build-disk.yml
-Manually-triggered workflow that builds a `qcow2` VM image and an `anaconda-iso` using `bootc-image-builder`. Uploads to job artifacts or S3.
-
 ### .github/workflows/setup-version-branches.yml
 `workflow_dispatch` workflow that creates or force-updates the `v11`, `v10`, and `v7` branches from any base ref. Each branch gets the correct version-specific KDE theme suite (Win11/10/7OS-kde), wallpapers, and README banner — all other content (apps, Proton, Dolphin Explorer, ISO publishing) is shared.
 
