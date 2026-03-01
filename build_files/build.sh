@@ -230,6 +230,30 @@ dnf5 install -y \
     kolourpaint \
     traceroute
 
+### Windows Store — KDE Discover rebranded
+# KDE Discover (plasma-discover) is the graphical software centre for Plasma.
+# Override its desktop entry so it appears as "Windows Store" in the
+# application launcher, taskbar, and window title, giving users a familiar
+# entry point for browsing and installing software — mirroring the
+# Microsoft Store experience shipped with Windows 10/11.
+# The Fluent icon theme (installed above) ships a "plasmadiscover" icon that
+# closely resembles the Windows Store shopping-bag glyph.
+cat > /usr/share/applications/org.kde.discover.desktop << 'EOF'
+[Desktop Entry]
+Name=Windows Store
+GenericName=Software Center
+Comment=Browse and install apps, games, and more
+Exec=plasma-discover %u
+Icon=plasmadiscover
+Terminal=false
+Type=Application
+Categories=Qt;KDE;PackageManager;
+MimeType=appstream://;snap://;
+Keywords=Store;Shop;Windows;Microsoft;App;Games;
+X-KDE-Protocols=appstream,snap
+StartupNotify=true
+EOF
+
 ### Microsoft PowerShell
 # PowerShell ships with every Windows 10/11 system and is the most authentic
 # Windows command-line experience available on Linux.
@@ -243,6 +267,11 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.microsoft.com/keys/microsoft.asc
 EOF
+# Pre-create the PowerShell install directory before the RPM unpacks its files.
+# Without this, cpio fails when /opt is still a symlink to /var/opt in some
+# base images (the Containerfile already converts /opt to a real directory, but
+# this explicit mkdir is an extra safety net and ensures proper ownership).
+mkdir -p /opt/microsoft/powershell/7
 dnf5 install -y powershell
 
 ### Set PowerShell as the default login shell for new users
@@ -347,6 +376,8 @@ alias explorer='dolphin'
 alias calc='kcalc'
 alias mspaint='kolourpaint'
 alias wordpad='libreoffice --writer'
+alias store='plasma-discover'
+alias winstore='plasma-discover'
 
 # taskkill — kill by PID or by process name (like: taskkill /F /IM app.exe)
 taskkill() {
@@ -406,3 +437,21 @@ EOF
 #### Enable System Unit Files
 
 systemctl enable podman.socket
+
+### Remove GRUB boot menu delay
+# Set GRUB_TIMEOUT=0 so the system boots immediately into RebornOS
+# without pausing at the menu — matching Windows' default boot behaviour
+# where no boot menu is shown to the user.
+# GRUB_TIMEOUT_STYLE=hidden suppresses the menu entirely; the countdown
+# timer is no longer displayed even if a key is pressed.
+_set_grub_option() {
+    local key="$1" value="$2"
+    if grep -q "^${key}=" /etc/default/grub; then
+        sed -i "s|^${key}=.*|${key}=${value}|" /etc/default/grub
+    else
+        echo "${key}=${value}" >> /etc/default/grub
+    fi
+}
+_set_grub_option GRUB_TIMEOUT 0
+_set_grub_option GRUB_TIMEOUT_STYLE "hidden"
+unset -f _set_grub_option
