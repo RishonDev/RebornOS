@@ -381,6 +381,28 @@ _win_path() {
 PS1='PS $(_win_path)> '
 EOF
 
+### Custom OS branding for the Anaconda installer
+# /usr/lib/os-release controls the product name shown in the ISO GRUB boot
+# menu ("Install RebornOS — Windows 11 Edition") and the Anaconda installer
+# window title.  Bazzite ships os-release under /usr/lib; /etc/os-release is
+# a symlink to it, so patching the canonical file covers both paths.
+# The sed replacements in setup-version-branches.yml update "Windows 11" to
+# "Windows 10" or "Windows 7" automatically when creating those branches.
+sed -i \
+    -e 's/^NAME=.*/NAME="RebornOS"/' \
+    -e 's/^PRETTY_NAME=.*/PRETTY_NAME="RebornOS — Windows 11 Edition"/' \
+    /usr/lib/os-release
+
+### Anaconda installer product configuration
+# /etc/anaconda/product.d/*.conf sets the product name that appears in the
+# Anaconda installer GUI title bar and welcome screen, giving the installer
+# a Windows-version-specific identity on each branch.
+mkdir -p /etc/anaconda/product.d
+cat > /etc/anaconda/product.d/rebornos.conf << 'EOF'
+[Product]
+product_name = RebornOS — Windows 11 Edition
+EOF
+
 #### Enable System Unit Files
 
 systemctl enable podman.socket
