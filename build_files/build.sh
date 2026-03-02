@@ -66,13 +66,28 @@ normalize_all_repo_gpgkeys() {
             file="/etc/pki/rpm-gpg/$(basename "$url")"
             curl -fsSL "$url" -o "$file"
             rpm --import "$file"
-           done < <(grep -E '^gpgkey=https?://' "$repo")    done
+        done < <(grep '^gpgkey=https' "$repo")
     done
     shopt -u nullglob
 }
 
 normalize_all_repo_gpgkeys
 unset -f normalize_all_repo_gpgkeys
+
+exclude_problematic_repo_packages() {
+    shopt -s nullglob
+    for repo in /etc/yum.repos.d/*.repo; do
+        if grep -q '^exclude=' "$repo"; then
+            sed -i '/^exclude=/ s/$/ aznfs/' "$repo"
+        else
+            printf '\nexclude=aznfs\n' >> "$repo"
+        fi
+    done
+    shopt -u nullglob
+}
+
+exclude_problematic_repo_packages
+unset -f exclude_problematic_repo_packages
 
 if ls /etc/yum.repos.d/rpmfusion-*.repo >/dev/null 2>&1; then
   for repo in /etc/yum.repos.d/rpmfusion-*.repo; do
