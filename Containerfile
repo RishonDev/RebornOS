@@ -1,7 +1,7 @@
 FROM scratch AS ctx
 COPY build_files /
 
-FROM ghcr.io/ublue-os/bazzite:stable
+FROM ghcr.io/rishondev/rebornos:latest
 
 RUN rm /opt && mkdir /opt
 

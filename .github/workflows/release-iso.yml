@@ -41,13 +41,13 @@ jobs:
       - name: Build ISO
         run: |
           sudo podman run --rm --privileged \
-            -v $(pwd)/iso.toml:/config.toml:ro \
-            -v $(pwd)/${OUTPUT_DIR}:/output \
-            -v /var/lib/containers/storage:/var/lib/containers/storage \
-            ${BIB_IMAGE} \
-            --type iso \
-            --rootfs=btrfs \
-            localhost/${IMAGE_NAME}:${IMAGE_TAG}
+          -v $(pwd)/iso.toml:/config.toml:ro \
+          -v $(pwd)/output:/output \
+          -v /var/lib/containers/storage:/var/lib/containers/storage \
+          quay.io/centos-bootc/bootc-image-builder:latest \
+          --type iso \
+          --rootfs btrfs \
+          localhost/reviveos:latest
 
       - name: Split files >1GB
         run: |
