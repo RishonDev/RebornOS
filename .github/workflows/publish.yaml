@@ -1,0 +1,120 @@
+name: Build & Publish Disk Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag"
+        default: "latest"
+        required: true
+        type: string
+      image_tag:
+        description: "Local container image tag to build from"
+        default: "latest"
+        required: true
+        type: string
+      disk_type:
+        description: "Artifact type"
+        required: true
+        default: "iso"
+        type: choice
+        options: [iso, qcow2, raw]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE_NAME: reviveos
+      BIB_IMAGE: quay.io/centos-bootc/bootc-image-builder:latest
+      SPLIT_THRESHOLD_BYTES: "1073741824" # 1 GiB
+      SPLIT_PART_SIZE: "1000m"            # keep parts under GitHub's per-file limits
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install podman + gh
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman gh
+
+      - name: Build container image
+        run: |
+          sudo podman build --pull=newer -t "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}" .
+
+      - name: Extract RPM GPG keys from the image (fixes file:// gpgkey paths)
+        run: |
+          set -euo pipefail
+          CID="$(sudo podman create "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}")"
+          mkdir -p "${RUNNER_TEMP}/rpm-gpg"
+          sudo podman cp "${CID}:/etc/pki/rpm-gpg" "${RUNNER_TEMP}/rpm-gpg/"
+          sudo podman rm "${CID}"
+
+      - name: Pick config.toml
+        run: |
+          set -euo pipefail
+          case "${{ inputs.disk_type }}" in
+            iso)
+              sed "s|__IMAGE_REF__|localhost/${IMAGE_NAME}:${{ inputs.image_tag }}|g" \
+                disk_config/iso.toml > "${RUNNER_TEMP}/config.toml"
+              ;;
+            qcow2|raw)
+              cp disk_config/disk.toml "${RUNNER_TEMP}/config.toml"
+              ;;
+            *)
+              echo "Unknown disk_type" >&2
+              exit 1
+              ;;
+          esac
+          mkdir -p "${RUNNER_TEMP}/out"
+
+      - name: Build artifact with bootc-image-builder
+        run: |
+          set -euo pipefail
+          sudo podman run --rm --privileged --pull=newer \
+            -v "${RUNNER_TEMP}/config.toml:/config.toml:ro" \
+            -v "${RUNNER_TEMP}/out:/output" \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            -v "${RUNNER_TEMP}/rpm-gpg/rpm-gpg:/etc/pki/rpm-gpg:ro" \
+            "${BIB_IMAGE}" \
+            --type "${{ inputs.disk_type }}" \
+            --rootfs=btrfs \
+            "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}"
+
+      - name: Split artifacts > 1GiB
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/out"
+          shopt -s nullglob
+          for f in *; do
+            [ -f "$f" ] || continue
+            size="$(stat -c%s "$f")"
+            if [ "$size" -gt "${SPLIT_THRESHOLD_BYTES}" ]; then
+              split -b "${SPLIT_PART_SIZE}" -d -a 3 "$f" "${f}.part-"
+              rm -f "$f"
+            fi
+          done
+
+      - name: Create release (if missing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "${{ inputs.release_tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "${{ inputs.release_tag }}" \
+              --title "ReviveOS ${{ inputs.release_tag }}" \
+              --notes "Built from image tag: ${{ inputs.image_tag }} (type: ${{ inputs.disk_type }})" \
+              --repo "${{ github.repository }}"
+          fi
+
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ inputs.release_tag }}" \
+            "${RUNNER_TEMP}/out/"* \
+            --repo "${{ github.repository }}" \
+            --clobber
