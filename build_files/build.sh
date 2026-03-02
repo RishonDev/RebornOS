@@ -81,7 +81,7 @@ if ls /etc/yum.repos.d/rpmfusion-*.repo >/dev/null 2>&1; then
       || echo 'skip_if_unavailable=1' >> "$repo"
   done
 fi
-dnf5 install -y libtasn1 p11-kit ca-certificates
+dnf5 install -y libtasn1 p11-kit p11-kit-trust ca-certificates
 
 dnf5 install -y tmux
 
