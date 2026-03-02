@@ -2,6 +2,32 @@
 
 set -ouex pipefail
 
+# bootc-image-builder cannot resolve file:// GPG key paths from inherited repos.
+normalize_terra_mesa_repo() {
+    local terra_key_url="https://repos.fyralabs.com/terra43-mesa/key.asc"
+    local terra_key_file="/etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa"
+    local repo_files=()
+
+    shopt -s nullglob
+    repo_files=(/etc/yum.repos.d/*.repo)
+    shopt -u nullglob
+
+    (( ${#repo_files[@]} )) || return 0
+    grep -RqsE '(^\[terra-mesa\]$|RPM-GPG-KEY-terra43-mesa)' /etc/yum.repos.d || return 0
+
+    mkdir -p "$(dirname "${terra_key_file}")"
+    curl -fsSL "${terra_key_url}" -o "${terra_key_file}"
+    rpm --import "${terra_key_file}"
+
+    sed -i \
+        -e "/^\[terra-mesa\]$/,/^\[/ s|^gpgkey=.*|gpgkey=${terra_key_url}|" \
+        -e "s|file:///etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa|${terra_key_url}|g" \
+        "${repo_files[@]}"
+}
+
+normalize_terra_mesa_repo
+unset -f normalize_terra_mesa_repo
+
 dnf5 install -y tmux
 
 dnf5 install -y \
