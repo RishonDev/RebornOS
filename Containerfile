@@ -3,7 +3,7 @@ COPY build_files /
 
 FROM ghcr.io/rishondev/rebornos:latest
 
-RUN rm /opt && mkdir /opt
+RUN rm -rf /opt && mkdir /opt
 
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/cache \
