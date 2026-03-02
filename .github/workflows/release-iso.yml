@@ -1,4 +1,4 @@
-name: Build Image
+name: Build ReviveOS
 
 on:
   workflow_dispatch:
@@ -13,13 +13,12 @@ jobs:
     env:
       IMAGE_NAME: reviveos
       IMAGE_TAG: latest
-      DISK_TYPE: iso
-      OUTPUT_DIR: output
       RELEASE_TAG: latest
+      OUTPUT_DIR: output
       BIB_IMAGE: quay.io/centos-bootc/bootc-image-builder:latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Install podman
@@ -27,20 +26,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y podman
 
-      - name: Build container image
+      - name: Build container
         run: |
           sudo podman build -t localhost/${IMAGE_NAME}:${IMAGE_TAG} .
 
-      - name: Create output directory
+      - name: Prepare output dir
         run: mkdir -p ${OUTPUT_DIR}
 
-      - name: Build disk image
+      - name: Generate ISO config
+        run: |
+          sed "s|__IMAGE_REF__|localhost/${IMAGE_NAME}:${IMAGE_TAG}|g" \
+            disk_config/iso.toml > iso.toml
+
+      - name: Build ISO
         run: |
           sudo podman run --rm --privileged \
+            -v $(pwd)/iso.toml:/config.toml:ro \
             -v $(pwd)/${OUTPUT_DIR}:/output \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             ${BIB_IMAGE} \
-            --type ${DISK_TYPE} \
+            --type iso \
+            --rootfs=btrfs \
             localhost/${IMAGE_NAME}:${IMAGE_TAG}
 
       - name: Split files >1GB
@@ -59,9 +65,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release view ${RELEASE_TAG} >/dev/null 2>&1 || \
-          gh release create ${RELEASE_TAG} --title "Release ${RELEASE_TAG}"
+          gh release create ${RELEASE_TAG} --title "ReviveOS ${RELEASE_TAG}"
 
-      - name: Upload files
+      - name: Upload release files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
