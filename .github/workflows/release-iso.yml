@@ -76,6 +76,12 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Login rootful Podman to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
       - name: Build ISO
         id: build
         run: |
@@ -84,6 +90,8 @@ jobs:
 
           TERRA_KEY_FILE="${RUNNER_TEMP}/RPM-GPG-KEY-terra43-mesa"
           curl -fsSL https://repos.fyralabs.com/terra43-mesa/key.asc -o "${TERRA_KEY_FILE}"
+
+          sudo podman pull "${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
           sudo podman run \
             --rm \
