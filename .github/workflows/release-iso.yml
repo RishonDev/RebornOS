@@ -1,21 +1,16 @@
 ---
 name: Publish ISO
 on:
-  workflow_run:
-    workflows: ["Build container image"]
-    types: [completed]
-  release:
-    types: [published]
-  schedule:
-    - cron: '0 0 1 * *'
   workflow_dispatch:
     inputs:
       release-tag:
-        description: "Existing release tag to upload the ISO to (e.g. v1.0.0)"
-        required: true
+        description: "Release tag to create or upload the ISO to"
+        default: "latest"
+        required: false
         type: string
       image-tag:
-        description: "Container image tag to build the ISO from (defaults to latest)"
+        description: "Container image tag to build the ISO from"
+        default: "latest"
         required: false
         type: string
 
@@ -32,7 +27,6 @@ concurrency:
 jobs:
   publish-iso:
     name: Build and publish ISO
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == github.event.repository.default_branch)
     runs-on: ubuntu-24.04
 
     permissions:
@@ -48,38 +42,29 @@ jobs:
           echo "IMAGE_NAME=${IMAGE_NAME,,}"           >> ${GITHUB_ENV}
           echo "USER_UID=${USER_UID}"                 >> ${GITHUB_ENV}
           echo "USER_GID=${USER_GID}"                 >> ${GITHUB_ENV}
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            echo "RELEASE_TAG=latest" >> ${GITHUB_ENV}
-            echo "IMAGE_TAG=sha-${{ github.event.workflow_run.head_sha }}" >> ${GITHUB_ENV}
-          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
-            echo "RELEASE_TAG=monthly-$(date +%Y-%m)" >> ${GITHUB_ENV}
-            echo "IMAGE_TAG=${DEFAULT_TAG}" >> ${GITHUB_ENV}
-          else
-            echo "RELEASE_TAG=${{ github.event.release.tag_name || inputs['release-tag'] }}" >> ${GITHUB_ENV}
-            echo "IMAGE_TAG=${{ inputs['image-tag'] || env.DEFAULT_TAG }}" >> ${GITHUB_ENV}
-          fi
+          echo "BIB_OUTPUT_DIR=${RUNNER_TEMP}/bib-output" >> ${GITHUB_ENV}
+          echo "RELEASE_TAG=${{ inputs['release-tag'] || env.DEFAULT_TAG }}" >> ${GITHUB_ENV}
+          echo "IMAGE_TAG=${{ inputs['image-tag'] || env.DEFAULT_TAG }}" >> ${GITHUB_ENV}
 
-      - name: Create rolling or monthly release
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_run'
+      - name: Create or reuse release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            gh release create "${RELEASE_TAG}" \
-              --title "RebornOS Latest" \
-              --notes "Automatically updated ISO built from the latest successful main-branch container image." \
-              --latest \
-              --repo "${{ github.repository }}" \
-              2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
-          else
-            MONTH_LABEL="$(date +'%B %Y')"
-            gh release create "${RELEASE_TAG}" \
-              --title "RebornOS ${MONTH_LABEL}" \
-              --notes "Automated monthly ISO release for ${MONTH_LABEL}." \
-              --latest \
-              --repo "${{ github.repository }}" \
-              2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
+          release_title="RebornOS ${RELEASE_TAG}"
+          latest_flag=()
+
+          if [[ "${RELEASE_TAG}" == "${DEFAULT_TAG}" ]]; then
+            release_title="RebornOS Latest"
+            latest_flag+=(--latest)
           fi
+
+          gh release create "${RELEASE_TAG}" \
+            --title "${release_title}" \
+            --notes "Manual ISO build for image tag ${IMAGE_TAG}." \
+            --target "${GITHUB_SHA}" \
+            --repo "${{ github.repository }}" \
+            "${latest_flag[@]}" \
+            2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading ISO to it"
 
       - name: Maximize build space
         uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e
@@ -89,19 +74,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 1
 
       - name: Build ISO
         id: build
-        uses: osbuild/bootc-image-builder-action@019bb59c5100ecec4e78c9e94e18a840110f7a0b
-        with:
-          builder-image: ${{ env.BIB_IMAGE }}
-          config-file: ./disk_config/iso.toml
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          chown: ${{ env.USER_UID }}:${{ env.USER_GID }}
-          types: anaconda-iso
-          additional-args: --use-librepo=True --rootfs=btrfs
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "${BIB_OUTPUT_DIR}"
+
+          TERRA_KEY_FILE="${RUNNER_TEMP}/RPM-GPG-KEY-terra43-mesa"
+          curl -fsSL https://repos.fyralabs.com/terra43-mesa/key.asc -o "${TERRA_KEY_FILE}"
+
+          sudo podman run \
+            --rm \
+            --privileged \
+            --pull=newer \
+            -v "${PWD}/disk_config/iso.toml:/config.toml:ro" \
+            -v "${BIB_OUTPUT_DIR}:/output" \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            -v "${TERRA_KEY_FILE}:/etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa:ro" \
+            "${BIB_IMAGE}" \
+            --type anaconda-iso \
+            --chown "${USER_UID}:${USER_GID}" \
+            --use-librepo=True \
+            --rootfs=btrfs \
+            "${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+          echo "output-directory=${BIB_OUTPUT_DIR}" >> "${GITHUB_OUTPUT}"
 
       - name: Customize ISO boot menu
         run: |
