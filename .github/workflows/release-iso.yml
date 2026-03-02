@@ -187,11 +187,53 @@ jobs:
 
           rm -rf "${WORK_DIR}"
 
+      - name: Package release assets
+        id: package
+        run: |
+          set -Eeuo pipefail
+
+          RELEASE_DIR="${RUNNER_TEMP}/release-assets"
+          MAX_SPLIT_SIZE="1900m"
+
+          mkdir -p "${RELEASE_DIR}"
+          : > "${RELEASE_DIR}/SHA256SUMS.txt"
+          : > "${RELEASE_DIR}/EXTRACT.txt"
+
+          cat >> "${RELEASE_DIR}/EXTRACT.txt" <<'EOF'
+For split archives:
+1. Download all matching .part-* files for the artifact.
+2. Reassemble with: cat <archive>.part-* > <archive>
+3. Extract with: tar -xf <archive>
+EOF
+
+          while IFS= read -r artifact; do
+            [ -z "${artifact}" ] && continue
+
+            artifact_name="$(basename "${artifact}")"
+            artifact_size="$(stat -c '%s' "${artifact}")"
+            split_limit=$((1900 * 1024 * 1024))
+
+            if (( artifact_size < split_limit )); then
+              cp "${artifact}" "${RELEASE_DIR}/${artifact_name}"
+              sha256sum "${RELEASE_DIR}/${artifact_name}" >> "${RELEASE_DIR}/SHA256SUMS.txt"
+              continue
+            fi
+
+            archive_name="${artifact_name}.tar"
+            tar -C "$(dirname "${artifact}")" -cf - "${artifact_name}" \
+              | split -b "${MAX_SPLIT_SIZE}" -d -a 3 - "${RELEASE_DIR}/${archive_name}.part-"
+
+            sha256sum "${RELEASE_DIR}/${archive_name}.part-"* >> "${RELEASE_DIR}/SHA256SUMS.txt"
+            printf '%s -> %s.part-*\n' "${artifact_name}" "${archive_name}" >> "${RELEASE_DIR}/EXTRACT.txt"
+          done < <(find "${{ steps.build.outputs.output-directory }}" -type f | sort)
+
+          echo "release-directory=${RELEASE_DIR}" >> "${GITHUB_OUTPUT}"
+
       - name: Upload Disk Image to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ env.RELEASE_TAG }}" \
-            ${{ steps.build.outputs.output-directory }}/**/* \
+            ${{ steps.package.outputs.release-directory }}/**/* \
             --repo "${{ github.repository }}" \
             --clobber
