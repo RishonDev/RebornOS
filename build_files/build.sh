@@ -3,7 +3,15 @@
 set -ouex pipefail
 
 # bootc-image-builder cannot resolve file:// GPG key paths from inherited repos.
-dnf5 install -y libtasn1 p11-kit p11-kit-trust ca-certificates
+dnf5 install -y \
+  filesystem \
+  bash \
+  coreutils \
+  glibc \
+  libtasn1 \
+  p11-kit \
+  p11-kit-trust \
+  ca-certificates
 
 normalize_terra_mesa_repo() {
     local terra_key_url="https://repos.fyralabs.com/terra43-mesa/key.asc"
@@ -58,7 +66,7 @@ normalize_all_repo_gpgkeys() {
             file="/etc/pki/rpm-gpg/$(basename "$url")"
             curl -fsSL "$url" -o "$file"
             rpm --import "$file"
-        done < <(grep '^gpgkey=https' "$repo")
+           done < <(grep -E '^gpgkey=https?://' "$repo")    done
     done
     shopt -u nullglob
 }
