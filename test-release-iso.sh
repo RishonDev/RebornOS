@@ -6,8 +6,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${repo_root}"
 
 # Usage: ./test-release-iso.sh [image-ref]
-# Default image ref expects a published image that matches disk_config/iso.toml.
-image_ref="${1:-${IMAGE_REF:-ghcr.io/rishondev/reviveos:latest}}"
+# Default image ref expects a local image built with:
+#   just build localhost/reviveos latest
+image_ref="${1:-${IMAGE_REF:-localhost/reviveos:latest}}"
 bib_image="${BIB_IMAGE:-quay.io/centos-bootc/bootc-image-builder:latest}"
 config_path="${BIB_CONFIG:-${repo_root}/disk_config/iso.toml}"
 output_dir="${BIB_OUTPUT_DIR:-${repo_root}/output-local}"
@@ -22,7 +23,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "${output_dir}"
-sed "s|ghcr.io/rishondev/reviveos:latest|${image_ref}|g" "${config_path}" > "${iso_config_file}"
+sed "s|__IMAGE_REF__|${image_ref}|g" "${config_path}" > "${iso_config_file}"
 curl -fsSL https://repos.fyralabs.com/terra43-mesa/key.asc -o "${terra_key_file}"
 printf 'Building ISO from %s\n' "${image_ref}"
 
