@@ -52,6 +52,13 @@ jobs:
           CID="$(sudo podman create "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}" /usr/bin/true)"
           sudo podman cp "${CID}:/etc/pki/rpm-gpg" "${RUNNER_TEMP}/rpm-gpg/"
           sudo podman rm "${CID}"
+      - name:
+          Debug: show extracted key dir
+        run: |
+          set -e
+          echo "RUNNER_TEMP=${RUNNER_TEMP}"
+          ls -lah "${RUNNER_TEMP}/rpm-gpg"
+          ls -lah "${RUNNER_TEMP}/rpm-gpg/rpm-gpg" || true
 
       - name: Pick config.toml
         run: |
@@ -78,11 +85,11 @@ jobs:
             -v "${RUNNER_TEMP}/config.toml:/config.toml:ro" \
             -v "${RUNNER_TEMP}/out:/output" \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
-            -v "${RUNNER_TEMP}/rpm-gpg/rpm-gpg:/etc/pki/rpm-gpg:ro" \
-            "${BIB_IMAGE}" \
+            -v "$RUNNER_TEMP/rpm-gpg/rpm-gpg:/etc/pki/rpm-gpg:ro" \
+            "$BIB_IMAGE" \
             --type "${{ inputs.disk_type }}" \
             --rootfs=btrfs \
-            "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}"
+            "localhost/$IMAGE_NAME:${{ inputs.image_tag }}"
 
       - name: Split artifacts > 1GiB
         run: |
