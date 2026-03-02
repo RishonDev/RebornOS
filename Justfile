@@ -112,10 +112,6 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
     args+="--rootfs=btrfs"
 
     BUILDTMP=$(mktemp -p "${PWD}" -d -t _build-bib.XXXXXXXXXX)
-    config_mount=()
-    if [[ -n "${config}" ]]; then
-        config_mount+=(-v "$(pwd)/${config}:/config.toml:ro")
-    fi
 
     sudo podman run \
       --rm \
@@ -124,7 +120,7 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
       --pull=newer \
       --net=host \
       --security-opt label=type:unconfined_t \
-      "${config_mount[@]}" \
+      -v $(pwd)/${config}:/config.toml:ro \
       -v $BUILDTMP:/output \
       -v /var/lib/containers/storage:/var/lib/containers/storage \
       "${bib_image}" \
@@ -140,10 +136,10 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
 _rebuild-bib $target_image $tag $type $config: (build target_image tag) && (_build-bib target_image tag type config)
 
 [group('Build Virtal Machine Image')]
-build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "bootc-installer" "")
+build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "iso" "disk_config/iso.toml")
 
 [group('Build Virtal Machine Image')]
-rebuild-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "bootc-installer" "")
+rebuild-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "iso" "disk_config/iso.toml")
 
 _run-vm $target_image $tag $type $config:
     #!/usr/bin/bash
@@ -151,14 +147,11 @@ _run-vm $target_image $tag $type $config:
 
     image_file="output/${type}/disk.${type}"
     if [[ $type == iso ]]; then
-        image_file="$(find output -type f -name '*.iso' | head -1)"
+        image_file="output/bootiso/install.iso"
     fi
 
     if [[ ! -f "${image_file}" ]]; then
         just "build-${type}" "$target_image" "$tag"
-        if [[ $type == iso ]]; then
-            image_file="$(find output -type f -name '*.iso' | head -1)"
-        fi
     fi
 
     port=8006
