@@ -1,4 +1,4 @@
-export image_name := env("IMAGE_NAME", "image-template")
+export image_name := env("IMAGE_NAME", "reviveos")
 export default_tag := env("DEFAULT_TAG", "latest")
 export bib_image := env("BIB_IMAGE", "quay.io/centos-bootc/bootc-image-builder:latest")
 
@@ -136,10 +136,10 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
 _rebuild-bib $target_image $tag $type $config: (build target_image tag) && (_build-bib target_image tag type config)
 
 [group('Build Virtal Machine Image')]
-build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "iso" "disk_config/iso.toml")
+build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "bootc-installer" "disk_config/iso.toml")
 
 [group('Build Virtal Machine Image')]
-rebuild-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "iso" "disk_config/iso.toml")
+rebuild-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "bootc-installer" "disk_config/iso.toml")
 
 _run-vm $target_image $tag $type $config:
     #!/usr/bin/bash
@@ -147,11 +147,14 @@ _run-vm $target_image $tag $type $config:
 
     image_file="output/${type}/disk.${type}"
     if [[ $type == iso ]]; then
-        image_file="output/bootiso/install.iso"
+        image_file="$(find output -type f -name '*.iso' | head -1)"
     fi
 
     if [[ ! -f "${image_file}" ]]; then
         just "build-${type}" "$target_image" "$tag"
+        if [[ $type == iso ]]; then
+            image_file="$(find output -type f -name '*.iso' | head -1)"
+        fi
     fi
 
     port=8006

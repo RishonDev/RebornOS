@@ -15,7 +15,7 @@ on:
         type: string
 
 env:
-  IMAGE_NAME: ${{ github.event.repository.name }}
+  IMAGE_NAME: "reviveos"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   DEFAULT_TAG: "latest"
   BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest"
@@ -50,11 +50,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          release_title="RebornOS ${RELEASE_TAG}"
+          release_title="ReviveOS ${RELEASE_TAG}"
           latest_flag=()
 
           if [[ "${RELEASE_TAG}" == "${DEFAULT_TAG}" ]]; then
-            release_title="RebornOS Latest"
+            release_title="ReviveOS Latest"
             latest_flag+=(--latest)
           fi
 
@@ -102,7 +102,7 @@ jobs:
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             -v "${TERRA_KEY_FILE}:/etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa:ro" \
             "${BIB_IMAGE}" \
-            --type anaconda-iso \
+            --type bootc-installer \
             --chown "${USER_UID}:${USER_GID}" \
             --use-librepo=True \
             --rootfs=btrfs \
@@ -131,7 +131,7 @@ jobs:
             TRY_KERNEL="${KERNEL_LINE} rd.live.overlay.overlayfs=1"
 
             {
-              printf "menuentry 'Try RebornOS' --class rebornos {\n"
+              printf "menuentry 'Try ReviveOS' --class reviveos {\n"
               printf "    %s\n" "${TRY_KERNEL}"
               printf "    %s\n" "${INITRD_LINE}"
               printf "}\n\n"
@@ -141,8 +141,8 @@ jobs:
           fi
 
           sed -i \
-            -e "s/menuentry 'Install [^']*/menuentry 'Install RebornOS/g" \
-            -e "s/menuentry 'Test this media \& install [^']*/menuentry 'Check media \& install RebornOS/g" \
+            -e "s/menuentry 'Install [^']*/menuentry 'Install ReviveOS/g" \
+            -e "s/menuentry 'Test this media \& install [^']*/menuentry 'Check media \& install ReviveOS/g" \
             "${WORK_DIR}/grub.cfg"
 
           xorriso -indev "${ISO_PATH}" -outdev "${ISO_PATH}.new" \

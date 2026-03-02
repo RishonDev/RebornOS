@@ -1,6 +1,6 @@
-# RebornOS
+# ReviveOS
 
-RebornOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/) / [bootc](https://github.com/bootc-dev/bootc) image built on top of [Bazzite](https://bazzite.gg/) that is designed to look, feel, and work like **Windows 11** — while staying fully open-source and Linux-native.
+ReviveOS is a custom [Fedora Atomic](https://fedoraproject.org/atomic-desktops/) / [bootc](https://github.com/bootc-dev/bootc) image built on top of [Bazzite](https://bazzite.gg/) that is designed to look, feel, and work like **Windows 11** — while staying fully open-source and Linux-native.
 
 > **Branch:** `v11` — Windows 11 theme, icons, wallpapers, and apps.  
 > Other variants: [`v10`](../../tree/v10) (Windows 10) · [`v7`](../../tree/v7) (Windows 7)
@@ -74,7 +74,7 @@ Dolphin is pre-configured via `/etc/skel/` to match Windows Explorer out of the 
 
 ## Version Branches
 
-RebornOS ships three branches, each themed for a specific Windows release:
+ReviveOS ships three branches, each themed for a specific Windows release:
 
 | Branch | Windows version | Theme suite |
 |--------|----------------|-------------|
@@ -89,7 +89,7 @@ After merging new features to `main`, go to **Actions → Set up version branche
 
 ## Downloading an ISO
 
-Every GitHub Release includes a pre-built installer ISO so you can install RebornOS from a USB drive, just like any other Linux distro.
+Every GitHub Release includes a pre-built installer ISO so you can install ReviveOS from a USB drive, just like any other Linux distro.
 
 1. Go to the **Releases** page of this repository on GitHub.
 2. Download the `.iso` file attached to the latest release.
@@ -104,7 +104,7 @@ Every GitHub Release includes a pre-built installer ISO so you can install Rebor
 ### Switch to this image
 From any bootc-based system, run (substitute your GitHub username if you forked this repo):
 ```bash
-sudo bootc switch ghcr.io/<your-github-username>/rebornos:latest
+sudo bootc switch ghcr.io/<your-github-username>/reviveos:latest
 ```
 
 ### Build it yourself

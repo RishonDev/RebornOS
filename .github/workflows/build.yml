@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_DESC: "RebornOS - A Fedora Atomic image with Windows-like look, feel, and app compatibility"
+  IMAGE_DESC: "ReviveOS - A Fedora Atomic image with Windows-like look, feel, and app compatibility"
   IMAGE_KEYWORDS: "bootc,ublue,universal-blue,windows,wine,libreoffice"
   IMAGE_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"
-  IMAGE_NAME: "${{ github.event.repository.name }}"
+  IMAGE_NAME: "reviveos"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
   DEFAULT_TAG: "latest"
 

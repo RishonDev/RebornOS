@@ -265,7 +265,7 @@ alias rd='rmdir'
 alias cls='clear'
 alias type='cat'
 
-alias ver='echo "RebornOS [$(uname -r)]"'
+alias ver='echo "ReviveOS [$(uname -r)]"'
 alias ipconfig='ip addr show'
 alias netstat='ss -tulnp'
 alias tasklist='ps aux'
@@ -315,14 +315,14 @@ PS1='PS $(_win_path)> '
 EOF
 
 sed -i \
-    -e 's/^NAME=.*/NAME="RebornOS"/' \
-    -e 's/^PRETTY_NAME=.*/PRETTY_NAME="RebornOS — Windows 11 Edition"/' \
+    -e 's/^NAME=.*/NAME="ReviveOS"/' \
+    -e 's/^PRETTY_NAME=.*/PRETTY_NAME="ReviveOS — Windows 11 Edition"/' \
     /usr/lib/os-release
 
 mkdir -p /etc/anaconda/product.d
-cat > /etc/anaconda/product.d/rebornos.conf << 'EOF'
+cat > /etc/anaconda/product.d/reviveos.conf << 'EOF'
 [Product]
-product_name = RebornOS — Windows 11 Edition
+product_name = ReviveOS — Windows 11 Edition
 EOF
 
 systemctl enable podman.socket

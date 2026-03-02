@@ -52,7 +52,7 @@ jobs:
             '/^> Other variants:/d' \
             README.md
           sed -i \
-            "0,/^RebornOS is a custom/s/^RebornOS is a custom/> **Branch:** \`v11\` — Windows 11 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v10\`](..\/..\/tree\/v10) (Windows 10) · [\`v7\`](..\/..\/tree\/v7) (Windows 7)\n\nRebornOS is a custom/" \
+            "0,/^ReviveOS is a custom/s/^ReviveOS is a custom/> **Branch:** \`v11\` — Windows 11 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v10\`](..\/..\/tree\/v10) (Windows 10) · [\`v7\`](..\/..\/tree\/v7) (Windows 7)\n\nReviveOS is a custom/" \
             README.md
 
           git add README.md
@@ -86,7 +86,7 @@ jobs:
             '/^> Other variants:/d' \
             README.md
           sed -i \
-            "0,/^RebornOS is a custom/s/^RebornOS is a custom/> **Branch:** \`v10\` — Windows 10 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v11\`](..\/..\/tree\/v11) (Windows 11) · [\`v7\`](..\/..\/tree\/v7) (Windows 7)\n\nRebornOS is a custom/" \
+            "0,/^ReviveOS is a custom/s/^ReviveOS is a custom/> **Branch:** \`v10\` — Windows 10 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v11\`](..\/..\/tree\/v11) (Windows 11) · [\`v7\`](..\/..\/tree\/v7) (Windows 7)\n\nReviveOS is a custom/" \
             README.md
 
           sed -i \
@@ -126,7 +126,7 @@ jobs:
             '/^> Other variants:/d' \
             README.md
           sed -i \
-            "0,/^RebornOS is a custom/s/^RebornOS is a custom/> **Branch:** \`v7\` — Windows 7 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v11\`](..\/..\/tree\/v11) (Windows 11) · [\`v10\`](..\/..\/tree\/v10) (Windows 10)\n\nRebornOS is a custom/" \
+            "0,/^ReviveOS is a custom/s/^ReviveOS is a custom/> **Branch:** \`v7\` — Windows 7 theme, icons, wallpapers, and apps.  \n> Other variants: [\`v11\`](..\/..\/tree\/v11) (Windows 11) · [\`v10\`](..\/..\/tree\/v10) (Windows 10)\n\nReviveOS is a custom/" \
             README.md
 
           sed -i \
