@@ -28,6 +28,24 @@ normalize_terra_mesa_repo() {
 normalize_terra_mesa_repo
 unset -f normalize_terra_mesa_repo
 
+if ls /etc/yum.repos.d/rpmfusion-*.repo >/dev/null 2>&1; then
+  for repo in /etc/yum.repos.d/rpmfusion-*.repo; do
+    sed -i \
+      -e 's/^metalink=.*/#&/g' \
+      -e 's/^mirrorlist=.*/#&/g' \
+      "$repo"
+
+    sed -i \
+      -e 's|^#baseurl=http://download1.rpmfusion.org|baseurl=https://download1.rpmfusion.org|g' \
+      -e 's|^baseurl=http://download1.rpmfusion.org|baseurl=https://download1.rpmfusion.org|g' \
+      "$repo"
+
+    grep -q '^skip_if_unavailable=' "$repo" \
+      && sed -i 's/^skip_if_unavailable=.*/skip_if_unavailable=1/' "$repo" \
+      || echo 'skip_if_unavailable=1' >> "$repo"
+  done
+fi
+
 dnf5 install -y tmux
 
 dnf5 install -y \
