@@ -96,7 +96,6 @@ jobs:
             --rm \
             --privileged \
             --pull=newer \
-            -v "${PWD}/disk_config/iso.toml:/config.toml:ro" \
             -v "${BIB_OUTPUT_DIR}:/output" \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             -v "${TERRA_KEY_FILE}:/etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa:ro" \

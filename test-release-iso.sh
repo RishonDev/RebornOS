@@ -36,7 +36,6 @@ sudo podman run \
     --rm \
     --privileged \
     --pull=newer \
-    -v "${config_path}:/config.toml:ro" \
     -v "${output_dir}:/output" \
     -v /var/lib/containers/storage:/var/lib/containers/storage \
     -v "${terra_key_file}:/etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa:ro" \

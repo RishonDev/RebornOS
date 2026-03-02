@@ -112,6 +112,10 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
     args+="--rootfs=btrfs"
 
     BUILDTMP=$(mktemp -p "${PWD}" -d -t _build-bib.XXXXXXXXXX)
+    config_mount=()
+    if [[ -n "${config}" ]]; then
+        config_mount+=(-v "$(pwd)/${config}:/config.toml:ro")
+    fi
 
     sudo podman run \
       --rm \
@@ -120,7 +124,7 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
       --pull=newer \
       --net=host \
       --security-opt label=type:unconfined_t \
-      -v $(pwd)/${config}:/config.toml:ro \
+      "${config_mount[@]}" \
       -v $BUILDTMP:/output \
       -v /var/lib/containers/storage:/var/lib/containers/storage \
       "${bib_image}" \
@@ -136,10 +140,10 @@ _build-bib $target_image $tag $type $config: (_rootful_load_image target_image t
 _rebuild-bib $target_image $tag $type $config: (build target_image tag) && (_build-bib target_image tag type config)
 
 [group('Build Virtal Machine Image')]
-build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "bootc-installer" "disk_config/iso.toml")
+build-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_build-bib target_image tag "bootc-installer" "")
 
 [group('Build Virtal Machine Image')]
-rebuild-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "bootc-installer" "disk_config/iso.toml")
+rebuild-iso $target_image=("localhost/" + image_name) $tag=default_tag: && (_rebuild-bib target_image tag "bootc-installer" "")
 
 _run-vm $target_image $tag $type $config:
     #!/usr/bin/bash
