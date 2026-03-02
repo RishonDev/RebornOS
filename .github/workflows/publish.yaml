@@ -44,11 +44,12 @@ jobs:
         run: |
           sudo podman build --pull=newer -t "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}" .
 
-      - name: Extract RPM GPG keys from the image (fixes file:// gpgkey paths)
+      - name: Extract RPM GPG keys from the image
         run: |
           set -euo pipefail
-          CID="$(sudo podman create "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}")"
           mkdir -p "${RUNNER_TEMP}/rpm-gpg"
+
+          CID="$(sudo podman create "localhost/${IMAGE_NAME}:${{ inputs.image_tag }}" /usr/bin/true)"
           sudo podman cp "${CID}:/etc/pki/rpm-gpg" "${RUNNER_TEMP}/rpm-gpg/"
           sudo podman rm "${CID}"
 
