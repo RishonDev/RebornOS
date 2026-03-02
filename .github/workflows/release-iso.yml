@@ -14,6 +14,10 @@ on:
         description: "Existing release tag to upload the ISO to (e.g. v1.0.0)"
         required: true
         type: string
+      image-tag:
+        description: "Container image tag to build the ISO from (defaults to latest)"
+        required: false
+        type: string
 
 env:
   IMAGE_NAME: ${{ github.event.repository.name }}
@@ -46,10 +50,13 @@ jobs:
           echo "USER_GID=${USER_GID}"                 >> ${GITHUB_ENV}
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
             echo "RELEASE_TAG=latest" >> ${GITHUB_ENV}
+            echo "IMAGE_TAG=sha-${{ github.event.workflow_run.head_sha }}" >> ${GITHUB_ENV}
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
             echo "RELEASE_TAG=monthly-$(date +%Y-%m)" >> ${GITHUB_ENV}
+            echo "IMAGE_TAG=${DEFAULT_TAG}" >> ${GITHUB_ENV}
           else
-            echo "RELEASE_TAG=${{ github.event.release.tag_name || inputs.release-tag }}" >> ${GITHUB_ENV}
+            echo "RELEASE_TAG=${{ github.event.release.tag_name || inputs['release-tag'] }}" >> ${GITHUB_ENV}
+            echo "IMAGE_TAG=${{ inputs['image-tag'] || env.DEFAULT_TAG }}" >> ${GITHUB_ENV}
           fi
 
       - name: Create rolling or monthly release
@@ -91,7 +98,7 @@ jobs:
         with:
           builder-image: ${{ env.BIB_IMAGE }}
           config-file: ./disk_config/iso.toml
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           chown: ${{ env.USER_UID }}:${{ env.USER_GID }}
           types: anaconda-iso
           additional-args: --use-librepo=True --rootfs=btrfs
