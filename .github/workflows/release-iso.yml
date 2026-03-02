@@ -1,238 +1,68 @@
-name: Publish Disk Image
+name: Build Image
+
 on:
   workflow_dispatch:
-    inputs:
-      release-tag:
-        description: "Release tag to create or upload the disk image to"
-        default: "latest"
-        required: false
-        type: string
-      image-tag:
-        description: "Container image tag to build the disk image from"
-        default: "latest"
-        required: false
-        type: string
-      disk-type:
-        description: "Disk image type to build"
-        default: "qcow2"
-        required: false
-        type: choice
-        options:
-          - qcow2
-          - raw
-          - iso
 
-env:
-  IMAGE_NAME: "reviveos"
-  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
-  DEFAULT_TAG: "latest"
-  BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
-  cancel-in-progress: true
+permissions:
+  contents: write
 
 jobs:
-  publish-disk:
-    name: Build and publish disk image
-    runs-on: ubuntu-24.04
+  build:
+    runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-      packages: read
+    env:
+      IMAGE_NAME: reviveos
+      IMAGE_TAG: latest
+      DISK_TYPE: iso
+      OUTPUT_DIR: output
+      RELEASE_TAG: latest
+      BIB_IMAGE: quay.io/centos-bootc/bootc-image-builder:latest
 
     steps:
-      - name: Prepare environment
-        run: |
-          USER_UID=$(id -u)
-          USER_GID=$(id -g)
-          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}"   >> ${GITHUB_ENV}
-          echo "IMAGE_NAME=${IMAGE_NAME,,}"           >> ${GITHUB_ENV}
-          echo "USER_UID=${USER_UID}"                 >> ${GITHUB_ENV}
-          echo "USER_GID=${USER_GID}"                 >> ${GITHUB_ENV}
-          echo "BIB_OUTPUT_DIR=${RUNNER_TEMP}/bib-output" >> ${GITHUB_ENV}
-          echo "RELEASE_TAG=${{ inputs['release-tag'] || env.DEFAULT_TAG }}" >> ${GITHUB_ENV}
-          echo "IMAGE_TAG=${{ inputs['image-tag'] || env.DEFAULT_TAG }}" >> ${GITHUB_ENV}
-          echo "DISK_TYPE=${{ inputs['disk-type'] || 'qcow2' }}" >> ${GITHUB_ENV}
-
-      - name: Create or reuse release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          release_title="ReviveOS ${RELEASE_TAG}"
-          latest_flag=()
-
-          if [[ "${RELEASE_TAG}" == "${DEFAULT_TAG}" ]]; then
-            release_title="ReviveOS Latest"
-            latest_flag+=(--latest)
-          fi
-
-          gh release create "${RELEASE_TAG}" \
-            --title "${release_title}" \
-            --notes "Manual ${DISK_TYPE} build for image tag ${IMAGE_TAG}." \
-            --target "${GITHUB_SHA}" \
-            --repo "${{ github.repository }}" \
-            "${latest_flag[@]}" \
-            2>/dev/null || echo "Release ${RELEASE_TAG} already exists — uploading disk image to it"
-
-      - name: Maximize build space
-        uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e
-        with:
-          remove-codeql: true
-
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          fetch-depth: 1
+        uses: actions/checkout@v4
 
-      - name: Build container image locally
+      - name: Install podman
         run: |
-          sudo podman build \
-            --pull=newer \
-            --tag "localhost/${IMAGE_NAME}:${IMAGE_TAG}" \
-            .
+          sudo apt-get update
+          sudo apt-get install -y podman
+
+      - name: Build container image
+        run: |
+          sudo podman build -t localhost/${IMAGE_NAME}:${IMAGE_TAG} .
+
+      - name: Create output directory
+        run: mkdir -p ${OUTPUT_DIR}
 
       - name: Build disk image
-        id: build
         run: |
-          set -Eeuo pipefail
-          mkdir -p "${BIB_OUTPUT_DIR}"
-
-          ISO_CONFIG="${RUNNER_TEMP}/iso.toml"
-          DISK_CONFIG="${RUNNER_TEMP}/disk.toml"
-          TERRA_KEY_FILE="${RUNNER_TEMP}/RPM-GPG-KEY-terra43-mesa"
-
-          case "${DISK_TYPE}" in
-            iso)
-              sed \
-                "s|__IMAGE_REF__|localhost/${IMAGE_NAME}:${IMAGE_TAG}|g" \
-                "${PWD}/disk_config/iso.toml" > "${ISO_CONFIG}"
-              CONFIG_PATH="${ISO_CONFIG}"
-              ;;
-            qcow2|raw)
-              cp "${PWD}/disk_config/disk.toml" "${DISK_CONFIG}"
-              CONFIG_PATH="${DISK_CONFIG}"
-              ;;
-            *)
-              echo "Unsupported disk type: ${DISK_TYPE}" >&2
-              exit 1
-              ;;
-          esac
-
-          curl -fsSL https://repos.fyralabs.com/terra43-mesa/key.asc -o "${TERRA_KEY_FILE}"
-
-          sudo podman run \
-            --rm \
-            --privileged \
-            --pull=newer \
-            -v "${CONFIG_PATH}:/config.toml:ro" \
-            -v "${BIB_OUTPUT_DIR}:/output" \
+          sudo podman run --rm --privileged \
+            -v $(pwd)/${OUTPUT_DIR}:/output \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
-            -v "${TERRA_KEY_FILE}:/etc/pki/rpm-gpg/RPM-GPG-KEY-terra43-mesa:ro" \
-            "${BIB_IMAGE}" \
-            --type "${DISK_TYPE}" \
-            --chown "${USER_UID}:${USER_GID}" \
-            --use-librepo=True \
-            --rootfs=btrfs \
-            "localhost/${IMAGE_NAME}:${IMAGE_TAG}"
+            ${BIB_IMAGE} \
+            --type ${DISK_TYPE} \
+            localhost/${IMAGE_NAME}:${IMAGE_TAG}
 
-          echo "output-directory=${BIB_OUTPUT_DIR}" >> "${GITHUB_OUTPUT}"
-
-      - name: Customize ISO boot menu
+      - name: Split files >1GB
         run: |
-          if [[ "${DISK_TYPE}" != "iso" ]]; then
-            echo "Skipping ISO boot menu customization for ${DISK_TYPE}"
-            exit 0
-          fi
-
-          ISO_PATH="$(find "${{ steps.build.outputs.output-directory }}" -name "*.iso" | head -1)"
-          [ -z "${ISO_PATH}" ] && { echo "No ISO found; skipping GRUB customization"; exit 0; }
-
-          sudo apt-get install -y xorriso
-
-          WORK_DIR="$(mktemp -d)"
-
-          xorriso -osirrox on -indev "${ISO_PATH}" \
-            -extract /EFI/BOOT/grub.cfg "${WORK_DIR}/grub.cfg" -- \
-            2>/dev/null \
-            || { echo "EFI GRUB config not found in ISO; skipping customization"; exit 0; }
-
-          KERNEL_LINE="$(grep -m1 '^\s*linuxefi ' "${WORK_DIR}/grub.cfg" || true)"
-          INITRD_LINE="$(grep -m1 '^\s*initrdefi ' "${WORK_DIR}/grub.cfg" || true)"
-
-          if [ -n "${KERNEL_LINE}" ] && [ -n "${INITRD_LINE}" ]; then
-            TRY_KERNEL="${KERNEL_LINE} rd.live.overlay.overlayfs=1"
-
-            {
-              printf "menuentry 'Try ReviveOS' --class reviveos {\n"
-              printf "    %s\n" "${TRY_KERNEL}"
-              printf "    %s\n" "${INITRD_LINE}"
-              printf "}\n\n"
-              cat "${WORK_DIR}/grub.cfg"
-            } > "${WORK_DIR}/grub_new.cfg"
-            mv "${WORK_DIR}/grub_new.cfg" "${WORK_DIR}/grub.cfg"
-          fi
-
-          sed -i \
-            -e "s/menuentry 'Install [^']*/menuentry 'Install ReviveOS/g" \
-            -e "s/menuentry 'Test this media \& install [^']*/menuentry 'Check media \& install ReviveOS/g" \
-            "${WORK_DIR}/grub.cfg"
-
-          xorriso -indev "${ISO_PATH}" -outdev "${ISO_PATH}.new" \
-            -map "${WORK_DIR}/grub.cfg" /EFI/BOOT/grub.cfg -- \
-            2>/dev/null \
-            && mv "${ISO_PATH}.new" "${ISO_PATH}" \
-            || echo "Warning: could not write modified GRUB config back into ISO"
-
-          rm -rf "${WORK_DIR}"
-
-      - name: Package release assets
-        id: package
-        run: |
-          set -Eeuo pipefail
-
-          RELEASE_DIR="${RUNNER_TEMP}/release-assets"
-          MAX_SPLIT_SIZE="1900m"
-
-          mkdir -p "${RELEASE_DIR}"
-          : > "${RELEASE_DIR}/SHA256SUMS.txt"
-          : > "${RELEASE_DIR}/EXTRACT.txt"
-
-          cat >> "${RELEASE_DIR}/EXTRACT.txt" <<'EOF'
-For split archives:
-1. Download all matching .part-* files for the artifact.
-2. Reassemble with: cat <archive>.part-* > <archive>
-3. Extract with: tar -xf <archive>
-EOF
-
-          while IFS= read -r artifact; do
-            [ -z "${artifact}" ] && continue
-
-            artifact_name="$(basename "${artifact}")"
-            artifact_size="$(stat -c '%s' "${artifact}")"
-            split_limit=$((1900 * 1024 * 1024))
-
-            if (( artifact_size < split_limit )); then
-              cp "${artifact}" "${RELEASE_DIR}/${artifact_name}"
-              sha256sum "${RELEASE_DIR}/${artifact_name}" >> "${RELEASE_DIR}/SHA256SUMS.txt"
-              continue
+          cd ${OUTPUT_DIR}
+          for f in *; do
+            size=$(stat -c%s "$f")
+            if [ "$size" -gt 1073741824 ]; then
+              split -b 1000m -d "$f" "$f.part-"
+              rm "$f"
             fi
+          done
 
-            archive_name="${artifact_name}.tar"
-            tar -C "$(dirname "${artifact}")" -cf - "${artifact_name}" \
-              | split -b "${MAX_SPLIT_SIZE}" -d -a 3 - "${RELEASE_DIR}/${archive_name}.part-"
-
-            sha256sum "${RELEASE_DIR}/${archive_name}.part-"* >> "${RELEASE_DIR}/SHA256SUMS.txt"
-            printf '%s -> %s.part-*\n' "${artifact_name}" "${archive_name}" >> "${RELEASE_DIR}/EXTRACT.txt"
-          done < <(find "${{ steps.build.outputs.output-directory }}" -type f | sort)
-
-          echo "release-directory=${RELEASE_DIR}" >> "${GITHUB_OUTPUT}"
-
-      - name: Upload Disk Image to GitHub Release
+      - name: Create release if needed
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ env.RELEASE_TAG }}" \
-            ${{ steps.package.outputs.release-directory }}/**/* \
-            --repo "${{ github.repository }}" \
-            --clobber
+          gh release view ${RELEASE_TAG} >/dev/null 2>&1 || \
+          gh release create ${RELEASE_TAG} --title "Release ${RELEASE_TAG}"
+
+      - name: Upload files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${RELEASE_TAG} ${OUTPUT_DIR}/* --clobber
