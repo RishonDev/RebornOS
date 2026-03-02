@@ -28,6 +28,42 @@ normalize_terra_mesa_repo() {
 normalize_terra_mesa_repo
 unset -f normalize_terra_mesa_repo
 
+import_runner_gpg_keys() {
+    local src="${RUNNER_TEMP:-}/rpm-gpg"
+    local dst="/etc/pki/rpm-gpg"
+
+    [[ -d "$src" ]] || return 0
+
+    mkdir -p "$dst"
+
+    for key in "$src"/RPM-GPG-KEY*; do
+        [[ -f "$key" ]] || continue
+        cp -f "$key" "$dst/"
+        rpm --import "$dst/$(basename "$key")"
+    done
+}
+
+import_runner_gpg_keys
+unset -f import_runner_gpg_keys
+
+normalize_all_repo_gpgkeys() {
+    shopt -s nullglob
+    for repo in /etc/yum.repos.d/*.repo; do
+        while read -r line; do
+            url="${line#gpgkey=}"
+            [[ "$url" =~ ^https?:// ]] || continue
+
+            file="/etc/pki/rpm-gpg/$(basename "$url")"
+            curl -fsSL "$url" -o "$file"
+            rpm --import "$file"
+        done < <(grep '^gpgkey=https' "$repo")
+    done
+    shopt -u nullglob
+}
+
+normalize_all_repo_gpgkeys
+unset -f normalize_all_repo_gpgkeys
+
 if ls /etc/yum.repos.d/rpmfusion-*.repo >/dev/null 2>&1; then
   for repo in /etc/yum.repos.d/rpmfusion-*.repo; do
     sed -i \
